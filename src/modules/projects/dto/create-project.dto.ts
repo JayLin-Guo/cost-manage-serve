@@ -24,7 +24,11 @@ export class CreateProjectDto {
   @IsString()
   contractAmount?: string;
 
-  @ApiProperty({ description: '项目描述', example: '这是一个重要的造价审核项目', required: false })
+  @ApiProperty({
+    description: '项目描述',
+    example: '这是一个重要的造价审核项目',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   description?: string;
@@ -33,12 +37,20 @@ export class CreateProjectDto {
   @IsOptional()
   attachments?: any;
 
-  @ApiProperty({ description: '开始日期', example: '2024-01-01T00:00:00.000Z', required: false })
+  @ApiProperty({
+    description: '开始日期',
+    example: '2024-01-01T00:00:00.000Z',
+    required: false,
+  })
   @IsOptional()
   @IsDateString()
   startDate?: string;
 
-  @ApiProperty({ description: '结束日期', example: '2024-12-31T23:59:59.000Z', required: false })
+  @ApiProperty({
+    description: '结束日期',
+    example: '2024-12-31T23:59:59.000Z',
+    required: false,
+  })
   @IsOptional()
   @IsDateString()
   endDate?: string;

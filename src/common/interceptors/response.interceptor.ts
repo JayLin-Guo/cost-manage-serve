@@ -8,24 +8,39 @@ import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ApiResponse } from '../interfaces/api-response.interface';
-import { RESPONSE_MESSAGE_KEY, RESPONSE_FORMAT_KEY } from '../decorators/api-response.decorator';
+import {
+  RESPONSE_MESSAGE_KEY,
+  RESPONSE_FORMAT_KEY,
+} from '../decorators/api-response.decorator';
 
 @Injectable()
-export class ResponseInterceptor<T> implements NestInterceptor<T, ApiResponse<T>> {
+export class ResponseInterceptor<T>
+  implements NestInterceptor<T, ApiResponse<T>>
+{
   constructor(private reflector: Reflector) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<ApiResponse<T>> {
+  intercept(
+    context: ExecutionContext,
+    next: CallHandler,
+  ): Observable<ApiResponse<T>> {
     const request = context.switchToHttp().getRequest();
     const response = context.switchToHttp().getResponse();
-    
+
     // 获取装饰器设置的消息和格式
-    const customMessage = this.reflector.get<string>(RESPONSE_MESSAGE_KEY, context.getHandler());
-    const responseFormat = this.reflector.get<string>(RESPONSE_FORMAT_KEY, context.getHandler());
+    const customMessage = this.reflector.get<string>(
+      RESPONSE_MESSAGE_KEY,
+      context.getHandler(),
+    );
+    const responseFormat = this.reflector.get<string>(
+      RESPONSE_FORMAT_KEY,
+      context.getHandler(),
+    );
 
     return next.handle().pipe(
-      map((data) => {
-        const message = customMessage || this.getSuccessMessage(response.statusCode);
-        
+      map(data => {
+        const message =
+          customMessage || this.getSuccessMessage(response.statusCode);
+
         // 根据响应格式处理数据
         let processedData = data;
         if (responseFormat === 'list' && Array.isArray(data)) {

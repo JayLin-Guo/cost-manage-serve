@@ -12,7 +12,7 @@ datasource db {
 // ==================== 用户模块 ====================
 
 model User {
-  id         Int      @id @default(autoincrement())
+  id         String   @id @default(cuid())
   username   String   @unique @db.VarChar(50)
   password   String   @db.VarChar(255)
   name       String   @db.VarChar(50)
@@ -41,8 +41,8 @@ enum UserRole {
 
 // ==================== 审核人员模块 ====================
 model ReviewerAssignment {
-  id          Int                 @id @default(autoincrement())
-  userId       Int                 @map("user_id")
+  id          String              @id @default(cuid())
+  userId       String              @map("user_id")
   user        User                @relation(fields: [userId], references: [id])
   reviewerLevel ReviewerLevel     @default(LEVEL_1)
   department   String?             @db.VarChar(100)
@@ -69,19 +69,19 @@ enum ReviewerLevel {
 // ==================== 项目模块 ====================
 
 model Project {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(cuid())
   projectName String   @db.VarChar(200)
   projectType String   @db.VarChar(100)
   clientUnit  String   @db.VarChar(200)
   projectSource String?   @db.VarChar(100)
-  contractAmount Decimal? @db.Decimal(15,2)
+  contractAmount String? @db.VarChar(50)
   description String?  @db.Text
   attachments  Json?  
 
   status      ProjectStatus @default(ACTIVE)
   startDate   DateTime?
   endDate     DateTime?
-  creatorId   Int      @map("creator_id")
+  creatorId   String   @map("creator_id")
   creator     User     @relation("ProjectCreator", fields: [creatorId], references: [id])
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")

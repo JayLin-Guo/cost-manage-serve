@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,12 +12,14 @@ async function bootstrap() {
     .setVersion('1.0')
     .addTag('projects', '项目管理')
     .build();
-  
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  await app.listen(process.env.PORT ?? 8100);
-  console.log(`🚀 Application is running on: http://localhost:${process.env.PORT ?? 8100}`);
-  console.log(`📚 Swagger documentation: http://localhost:${process.env.PORT ?? 8100}/api`);
+  const port = 8200; // 使用8200端口避免冲突
+  await app.listen(port);
+  console.log(`🚀 Application is running on: http://localhost:${port}`);
+  console.log(`📚 Swagger documentation: http://localhost:${port}/api`);
 }
-bootstrap();
+
+void bootstrap();

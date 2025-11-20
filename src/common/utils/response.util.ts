@@ -1,10 +1,17 @@
-import { ApiResponse, PaginatedResponse } from '../interfaces/api-response.interface';
+import {
+  ApiResponse,
+  PaginatedResponse,
+} from '../interfaces/api-response.interface';
 
 export class ResponseUtil {
   /**
    * 成功响应
    */
-  static success<T>(data?: T, message = '操作成功', code = 200): ApiResponse<T> {
+  static success<T>(
+    data?: T,
+    message = '操作成功',
+    code = 200,
+  ): ApiResponse<T> {
     return {
       code,
       message,
@@ -28,7 +35,7 @@ export class ResponseUtil {
     total: number,
     page: number,
     pageSize: number,
-    message = '获取成功'
+    message = '获取成功',
   ): PaginatedResponse<T> {
     return {
       code: 200,

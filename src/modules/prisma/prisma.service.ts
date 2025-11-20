@@ -2,8 +2,10 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   // 模块初始化时连接数据库
   async onModuleInit() {
     await this.$connect();
@@ -33,7 +35,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       await this.$queryRaw`SELECT 1`;
       return { status: 'healthy', database: 'connected' };
     } catch (error) {
-      return { status: 'unhealthy', database: 'disconnected', error: error.message };
+      return {
+        status: 'unhealthy',
+        database: 'disconnected',
+        error: error.message,
+      };
     }
   }
 }
