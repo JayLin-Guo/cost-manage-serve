@@ -2,12 +2,13 @@ import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { ProjectsModule } from './modules/projects/projects.module';
-import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { UserModel } from './modules/users/user.module';
 
 @Module({
-  imports: [PrismaModule, ProjectsModule],
+  imports: [PrismaModule, ProjectsModule, UserModel],
   controllers: [AppController],
   providers: [
     AppService,

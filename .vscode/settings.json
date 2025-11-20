@@ -7,11 +7,11 @@
     "source.fixAll.eslint": "explicit",
     "source.organizeImports": "explicit"
   },
-  
+
   // 自动保存设置
   "files.autoSave": "onFocusChange",
   "files.autoSaveDelay": 1000,
-  
+
   // 默认格式化工具
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "[typescript]": {
@@ -23,42 +23,43 @@
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-  
+
   // TypeScript 设置
   "typescript.preferences.importModuleSpecifier": "relative",
   "typescript.suggest.autoImports": true,
-  
+
   // ESLint 设置
   "eslint.validate": [
     "javascript",
     "typescript"
   ],
   "eslint.format.enable": true,
-  
+
   // 文件关联
   "files.associations": {
     "*.ts": "typescript",
     "*.js": "javascript"
   },
-  
+
   // 排除文件
   "files.exclude": {
     "**/node_modules": true,
     "**/dist": true,
     "**/.git": true
   },
-  
+
   // 搜索排除
   "search.exclude": {
     "**/node_modules": true,
     "**/dist": true
   },
-  
+
   // 其他设置
   "editor.tabSize": 2,
   "editor.insertSpaces": true,
   "editor.detectIndentation": false,
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,
-  "files.trimFinalNewlines": true
+  "files.trimFinalNewlines": true,
+  "kiroAgent.configureMCP": "Disabled"
 }

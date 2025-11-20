@@ -26,34 +26,35 @@ model User {
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   // 关联关系
-  createdProjects Project[] @relation("ProjectCreator")
+  createdProjects     Project[]            @relation("ProjectCreator")
   reviewerAssignments ReviewerAssignment[]
+  ledTasks            Task[]               @relation("TaskLeader")
+  taskParticipants    TaskParticipant[]
+  taskReviewStages    TaskReviewStage[]    @relation("TaskReviewer")
 
   @@map("users")
 }
 
 enum UserRole {
-   ADMIN           // 系统管理员
-  COST_ENGINEER   // 造价工程师  
-  SUPERVISOR      // 项目主管
-  STAFF           // 普通员工
+  ADMIN // 系统管理员
+  COST_ENGINEER // 造价工程师
+  SUPERVISOR // 项目主管
+  STAFF // 普通员工
 }
 
 // ==================== 审核人员模块 ====================
 model ReviewerAssignment {
-  id          String              @id @default(cuid())
-  userId       String              @map("user_id")
-  user        User                @relation(fields: [userId], references: [id])
-  reviewerLevel ReviewerLevel     @default(LEVEL_1)
-  department   String?             @db.VarChar(100)
-  isActive     Boolean             @default(true)
-  assignedDate  DateTime           @default(now()) @map("assigned_date")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  
+  id            String        @id @default(cuid())
+  userId        String        @map("user_id")
+  user          User          @relation(fields: [userId], references: [id])
+  reviewerLevel ReviewerLevel @default(LEVEL_1)
+  department    String?       @db.VarChar(100)
+  isActive      Boolean       @default(true)
+  assignedDate  DateTime      @default(now()) @map("assigned_date")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
 
-  
-  @@unique([userId, reviewerLevel, department])   // 确保每个用户在每个部门只能有一个审核级别
+  @@unique([userId, reviewerLevel, department]) // 确保每个用户在每个部门只能有一个审核级别
   @@index([reviewerLevel])
   @@index([updatedAt])
   @@index([department])
@@ -69,22 +70,22 @@ enum ReviewerLevel {
 // ==================== 项目模块 ====================
 
 model Project {
-  id          String   @id @default(cuid())
-  projectName String   @db.VarChar(200)
-  projectType String   @db.VarChar(100)
-  clientUnit  String   @db.VarChar(200)
-  projectSource String?   @db.VarChar(100)
+  id             String  @id @default(cuid())
+  projectName    String  @db.VarChar(200)
+  projectType    String  @db.VarChar(100)
+  clientUnit     String  @db.VarChar(200)
+  projectSource  String? @db.VarChar(100)
   contractAmount String? @db.VarChar(50)
-  description String?  @db.Text
-  attachments  Json?  
+  description    String? @db.Text
+  attachments    Json?
 
-  status      ProjectStatus @default(ACTIVE)
-  startDate   DateTime?
-  endDate     DateTime?
-  creatorId   String   @map("creator_id")
-  creator     User     @relation("ProjectCreator", fields: [creatorId], references: [id])
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  status    ProjectStatus @default(ACTIVE)
+  startDate DateTime?
+  endDate   DateTime?
+  creatorId String        @map("creator_id")
+  creator   User          @relation("ProjectCreator", fields: [creatorId], references: [id])
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
 
   @@index([creatorId])
   @@index([projectName])
@@ -93,9 +94,83 @@ model Project {
 }
 
 enum ProjectStatus {
-  ACTIVE      // 进行中
-  COMPLETED   // 已完成
-  SUSPENDED   // 已暂停
-  CANCELLED   // 已取消
+  ACTIVE // 进行中
+  COMPLETED // 已完成
+  SUSPENDED // 已暂停
+  CANCELLED // 已取消
 }
 
+// ==================== 任务模块 ====================
+model Task {
+  id           String            @id @default(cuid())
+  taskName     String            @db.VarChar(200)
+  taskCategory TaskCategory
+  participants TaskParticipant[] // 显式多对多
+  taskLeader   User              @relation("TaskLeader", fields: [taskLeaderId], references: [id])
+  taskLeaderId String
+  reviewConfig TaskReviewConfig? // 任务审核配置
+
+  description  String            @db.Text
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  @@map("tasks")
+}
+
+// 任务审核配置表
+model TaskReviewConfig {
+  id           String      @id @default(cuid())
+  taskId       String      @unique @map("task_id")
+  task         Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  reviewType   ReviewType  @default(NO_REVIEW) // 审核类型：不审核、一审、二审、三审
+  reviewStages TaskReviewStage[] // 审核阶段配置
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  @@map("task_review_configs")
+}
+
+// 任务审核阶段表
+model TaskReviewStage {
+  id               String           @id @default(cuid())
+  reviewConfigId   String           @map("review_config_id")
+  reviewConfig     TaskReviewConfig @relation(fields: [reviewConfigId], references: [id], onDelete: Cascade)
+  stageLevel       ReviewerLevel    // 审核级别：一审、二审、三审
+  reviewerId       String           @map("reviewer_id")
+  reviewer         User             @relation("TaskReviewer", fields: [reviewerId], references: [id])
+  isRequired       Boolean          @default(true) // 是否必须审核
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  @@unique([reviewConfigId, stageLevel]) // 每个配置的每个级别只能有一个审核人
+  @@map("task_review_stages")
+}
+
+model TaskParticipant {
+  id     String @id @default(cuid())
+  task   Task   @relation(fields: [taskId], references: [id])
+  taskId String
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  @@unique([taskId, userId]) //
+  @@map("task_participants")
+}
+
+enum TaskCategory {
+  DRAFTING_CONTROL_PRICE // 拟定控制价
+  DRAFTING_PLAN // 拟案
+  COUNTERSIGN // 会签
+  OTHER // 其他
+}
+
+// 审核类型枚举
+enum ReviewType {
+  NO_REVIEW // 不审核
+  LEVEL_1_ONLY // 仅一审
+  LEVEL_2_ONLY // 仅二审
+  LEVEL_3_ONLY // 仅三审
+  LEVEL_1_AND_2 // 一审+二审
+  LEVEL_1_AND_3 // 一审+三审
+  LEVEL_2_AND_3 // 二审+三审
+  ALL_LEVELS // 一审+二审+三审
