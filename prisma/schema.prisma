@@ -174,3 +174,4 @@ enum ReviewType {
   LEVEL_1_AND_3 // 一审+三审
   LEVEL_2_AND_3 // 二审+三审
   ALL_LEVELS // 一审+二审+三审
+}

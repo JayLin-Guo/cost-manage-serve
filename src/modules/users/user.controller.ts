@@ -1,9 +1,18 @@
-import { Controller, Get, Logger, Param, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Logger,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   ListResponse,
   ResponseMessage,
 } from '../../common/decorators/api-response.decorator';
+import { UserCreatedDto } from './dto/user.dto';
 import { UserService } from './user.service';
 
 @Controller('user')
@@ -29,5 +38,11 @@ export class UserController {
   @Get('detail/:id')
   detail(@Param() id: string) {
     return this.UserService.findOne(id);
+  }
+
+  @ResponseMessage('添加用户成功')
+  @Post('createUser')
+  create(@Body() createdUser: UserCreatedDto) {
+    return this.UserService.created(createdUser);
   }
 }
