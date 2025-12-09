@@ -5,7 +5,6 @@ import {
   Get,
   Logger,
   Param,
-  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -68,7 +67,7 @@ export class RoleCategoryController {
   })
   @ApiResponse({ status: 200, description: '更新成功' })
   @ResponseMessage('更新角色分类成功')
-  @Patch(':id')
+  @Post('/update/:id') // 改为 POST 方式，路径改为 update/:id
   update(@Param('id') id: string, @Body() updateDto: UpdateRoleCategoryDto) {
     return this.roleCategoryService.update(id, updateDto);
   }

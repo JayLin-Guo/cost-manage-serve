@@ -41,16 +41,14 @@ export class RoleCategoryService {
 
   // 分页查找
   async findAllByPagination(query: RoleCategoryPaginationDto) {
-    const { pageNum = '1', pageSize = '10', keyword } = query;
+    const { pageNum = '1', pageSize = '10', keyword, name, code } = query;
 
-    const whereCondition = keyword
-      ? {
-          OR: [
-            { name: { contains: keyword } },
-            { code: { contains: keyword } },
-          ],
-        }
-      : {};
+    const whereCondition =
+      !name && !code
+        ? {}
+        : {
+            OR: [{ name: { contains: name } }, { code: { contains: code } }],
+          };
 
     const [list, total] = await Promise.all([
       this.prisma.roleCategory.findMany({

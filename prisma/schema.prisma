@@ -62,9 +62,10 @@ model User {
 
 /// 角色分类表：定义用户角色分类
 model RoleCategory {
-  id   String @id @default(cuid()) /// 角色分类唯一标识
-  name String @db.VarChar(20) /// 角色分类名称
-  code String @db.VarChar(30) /// 角色分类编码
+  id          String  @id @default(cuid()) /// 角色分类唯一标识
+  name        String  @db.VarChar(20) /// 角色分类名称
+  code        String  @db.VarChar(30) /// 角色分类编码
+  description String? @db.Text /// 角色分类描述
 
   isActive  Boolean  @default(true) /// 是否启用
   createdAt DateTime @default(now()) @map("created_at") /// 创建时间
@@ -80,9 +81,11 @@ model RoleCategory {
 /// 任务分类表：定义不同类型的任务及其审核流程模板
 /// 例如：“工程造价审核”、“预算编制”、“结算审核”等
 model TaskCategory {
-  id   String @id @default(cuid()) /// 分类唯一标识
-  name String @db.VarChar(50) /// 分类名称
-  code String @db.VarChar(50) /// 分类编码
+  id          String  @id @default(cuid()) /// 分类唯一标识
+  name        String  @db.VarChar(50) /// 分类名称
+  code        String  @db.VarChar(50) /// 分类编码
+  description String? @db.Text /// 分类描述
+  sort        Int?    @default(0) /// 排序字段
 
   isActive  Boolean  @default(true) /// 是否启用
   createdAt DateTime @default(now()) @map("created_at") /// 创建时间

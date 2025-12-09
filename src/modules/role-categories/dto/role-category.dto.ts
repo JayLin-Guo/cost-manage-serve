@@ -10,6 +10,14 @@ export class CreateRoleCategoryDto {
   @ApiProperty({ description: '角色分类编码', example: 'MANAGEMENT' })
   code: string;
 
+  @IsString()
+  @IsOptional()
+  @ApiProperty({
+    description: '角色分类描述',
+    example: '负责公司整体管理和决策的角色',
+  })
+  description?: string;
+
   @IsBoolean()
   @IsOptional()
   @ApiProperty({ description: '是否启用', example: true })
@@ -26,6 +34,14 @@ export class UpdateRoleCategoryDto {
   @IsOptional()
   @ApiProperty({ description: '角色分类编码', example: 'MANAGEMENT' })
   code?: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({
+    description: '角色分类描述',
+    example: '负责公司整体管理和决策的角色',
+  })
+  description?: string;
 
   @IsBoolean()
   @IsOptional()
@@ -48,4 +64,14 @@ export class RoleCategoryPaginationDto {
   @IsOptional()
   @ApiProperty({ description: '搜索关键词', example: '管理' })
   keyword?: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: '搜索关键词', example: '测试' })
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({ description: '搜索关键词', example: 'A001' })
+  code?: string;
 }
