@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
@@ -23,9 +23,13 @@ export class PrismaService
     // 开发环境下清理数据库的方法
     if (process.env.NODE_ENV === 'development') {
       // 按照外键依赖顺序删除
+      await this.taskReviewStage.deleteMany();
+      await this.taskReviewConfig.deleteMany();
+      await this.taskParticipant.deleteMany();
+      await this.task.deleteMany();
       await this.project.deleteMany();
-      await this.reviewerAssignment.deleteMany();
       await this.user.deleteMany();
+      await this.department.deleteMany();
     }
   }
 

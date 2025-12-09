@@ -54,8 +54,9 @@ export class UserCreatedDto {
   role: UserRole;
 
   @IsString()
-  @ApiProperty({ description: '部门' })
-  department?: string;
+  @IsOptional()
+  @ApiProperty({ description: '部门ID' })
+  departmentId?: string;
 
   @IsBoolean()
   @ApiProperty({ description: '是否启用' })

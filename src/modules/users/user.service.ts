@@ -64,6 +64,8 @@ export class UserService {
       name: createdDto.name?.trim(),
       email: createdDto.email?.trim() || null,
       role: createdDto.role,
+      departmentId: createdDto.departmentId,
+      isActive: createdDto.isActive ?? true,
     };
 
     try {
