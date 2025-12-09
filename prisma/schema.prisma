@@ -14,15 +14,15 @@ datasource db {
 /// 部门表：支持树形结构的组织架构
 model Department {
   id       String       @id @default(cuid()) /// 部门唯一标识
-  name     String       @db.VarChar(50)      /// 部门名称
-  code     String       @db.VarChar(50)      /// 部门编码
-  parentId String?      @db.VarChar(50)      /// 父部门ID（为空表示顶级部门）
-  parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])  /// 父部门（自关联：通过 parentId 关联到父部门的 id）
+  name     String       @db.VarChar(50) /// 部门名称
+  code     String       @db.VarChar(50) /// 部门编码
+  parentId String?      @db.VarChar(50) /// 父部门ID（为空表示顶级部门）
+  parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id]) /// 父部门（自关联：通过 parentId 关联到父部门的 id）
   children Department[] @relation("DepartmentHierarchy") /// 子部门列表（自关联：当前部门作为父部门时的所有子部门）
 
-  isActive  Boolean  @default(true)                 /// 是否启用
+  isActive  Boolean  @default(true) /// 是否启用
   createdAt DateTime @default(now()) @map("created_at") /// 创建时间
-  updatedAt DateTime @updatedAt @map("updated_at")      /// 更新时间
+  updatedAt DateTime @updatedAt @map("updated_at") /// 更新时间
 
   // 关联关系（反向关系）
   users User[] /// 部门下的用户列表（一对多：User 表中 departmentId 指向本部门的所有用户）
@@ -33,58 +33,64 @@ model Department {
 // ==================== 用户模块 ====================
 /// 用户表：系统用户基本信息和权限管理
 model User {
-  id          String    @id @default(cuid())           /// 用户唯一标识
-  username    String    @unique @db.VarChar(50)        /// 登录用户名（唯一）
-  password    String    @db.VarChar(255)               /// 密码（加密存储）
-  name        String    @db.VarChar(50)                /// 真实姓名
-  email       String?   @unique @db.VarChar(100)       /// 邮箱（唯一，可选）
-  phone       String?   @db.VarChar(20)                /// 手机号（可选）
-  role        UserRole  @default(STAFF)                /// 用户角色
+  id       String  @id @default(cuid()) /// 用户唯一标识
+  username String  @unique @db.VarChar(50) /// 登录用户名（唯一）
+  password String  @db.VarChar(255) /// 密码（加密存储）
+  name     String  @db.VarChar(50) /// 真实姓名
+  email    String? @unique @db.VarChar(100) /// 邮箱（唯一，可选）
+  phone    String? @db.VarChar(20) /// 手机号（可选）
 
-  avatar      String?   @db.VarChar(500)               /// 头像URL
-  isActive    Boolean   @default(true)                 /// 是否启用
-  createdAt   DateTime  @default(now()) @map("created_at") /// 创建时间
-  updatedAt   DateTime  @updatedAt @map("updated_at")      /// 更新时间
+  roleCategoryId String?       @map("role_category_id") /// 角色分类ID（可选）
+  roleCategory   RoleCategory? @relation(fields: [roleCategoryId], references: [id]) /// 角色分类（多对一：通过 roleCategoryId 关联到 RoleCategory 表的 id）
 
-  departmentId String?  @db.VarChar(50)                /// 所属部门ID
+  avatar    String?  @db.VarChar(500) /// 头像URL
+  isActive  Boolean  @default(true) /// 是否启用
+  createdAt DateTime @default(now()) @map("created_at") /// 创建时间
+  updatedAt DateTime @updatedAt @map("updated_at") /// 更新时间
+
+  departmentId String?     @db.VarChar(50) /// 所属部门ID
   department   Department? @relation(fields: [departmentId], references: [id]) /// 所属部门（多对一：通过 departmentId 关联到 Department 表的 id）
 
-
   // 关联关系（反向关系：从其他表指向当前用户的所有记录）
-  createdProjects   Project[]            @relation("ProjectCreator")  /// 创建的项目列表（一对多：Project 表中 creatorId 指向本用户的所有项目）
-  ledTasks          Task[]               @relation("TaskLeader")      /// 负责的任务列表（一对多：Task 表中 taskLeaderId 指向本用户的所有任务）
-  taskParticipants  TaskParticipant[]                                /// 参与的任务列表（一对多：TaskParticipant 表中 userId 指向本用户的所有参与记录）
-  taskReviewStages  TaskReviewStage[]    @relation("TaskReviewer")   /// 作为审核人的步骤列表（一对多：TaskReviewStage 表中 reviewerId 指向本用户的所有审核步骤）
-
+  createdProjects  Project[]         @relation("ProjectCreator") /// 创建的项目列表（一对多：Project 表中 creatorId 指向本用户的所有项目）
+  ledTasks         Task[]            @relation("TaskLeader") /// 负责的任务列表（一对多：Task 表中 taskLeaderId 指向本用户的所有任务）
+  taskParticipants TaskParticipant[] /// 参与的任务列表（一对多：TaskParticipant 表中 userId 指向本用户的所有参与记录）
+  taskReviewStages TaskReviewStage[] @relation("TaskReviewer") /// 作为审核人的步骤列表（一对多：TaskReviewStage 表中 reviewerId 指向本用户的所有审核步骤）
 
   @@map("users")
 }
 
-/// 用户角色枚举
+/// 角色分类表：定义用户角色分类
+model RoleCategory {
+  id   String @id @default(cuid()) /// 角色分类唯一标识
+  name String @db.VarChar(20) /// 角色分类名称
+  code String @db.VarChar(30) /// 角色分类编码
 
+  isActive  Boolean  @default(true) /// 是否启用
+  createdAt DateTime @default(now()) @map("created_at") /// 创建时间
+  updatedAt DateTime @updatedAt @map("updated_at") /// 更新时间
 
-enum UserRole {
-  ADMIN          /// 系统管理员：拥有所有权限
-  COST_ENGINEER  /// 造价工程师：创建和处理造价任务
-  SUPERVISOR     /// 项目主管：审核和监督项目进度
-  STAFF          /// 普通员工：基础操作权限
+  // 关联关系（反向关系）
+  users User[] /// 该角色分类下的用户列表（一对多：User 表中 roleCategoryId 指向本分类的所有用户）
+
+  @@map("role_categories")
 }
 
 // ==================== 任务分类模块 ====================
 /// 任务分类表：定义不同类型的任务及其审核流程模板
 /// 例如：“工程造价审核”、“预算编制”、“结算审核”等
 model TaskCategory {
-  id        String       @id @default(cuid())           /// 分类唯一标识
-  name      String       @db.VarChar(50)                /// 分类名称
-  code      String       @db.VarChar(50)                /// 分类编码
+  id   String @id @default(cuid()) /// 分类唯一标识
+  name String @db.VarChar(50) /// 分类名称
+  code String @db.VarChar(50) /// 分类编码
 
-  isActive  Boolean      @default(true)                 /// 是否启用
-  createdAt DateTime     @default(now()) @map("created_at") /// 创建时间
-  updatedAt DateTime     @updatedAt @map("updated_at")      /// 更新时间
+  isActive  Boolean  @default(true) /// 是否启用
+  createdAt DateTime @default(now()) @map("created_at") /// 创建时间
+  updatedAt DateTime @updatedAt @map("updated_at") /// 更新时间
 
   // 关联关系（反向关系）
-  tasks           Task[]                         /// 该分类下的所有任务（一对多：Task 表中 taskCategoryId 指向本分类的所有任务）
-  stageTemplates  TaskCategoryStageTemplate[]    /// 该分类定义的审核步骤模板（一对多：TaskCategoryStageTemplate 表中 taskCategoryId 指向本分类的所有模板）
+  tasks          Task[] /// 该分类下的所有任务（一对多：Task 表中 taskCategoryId 指向本分类的所有任务）
+  stageTemplates TaskCategoryStageTemplate[] /// 该分类定义的审核步骤模板（一对多：TaskCategoryStageTemplate 表中 taskCategoryId 指向本分类的所有模板）
 
   @@map("task_categories")
 }
@@ -93,14 +99,14 @@ model TaskCategory {
 /// 说明：每个分类预先定义这类任务要走哪些审核步骤（第1步/第2步/第3步...）
 /// 例如：“工程造价审核”分类定义了3个步骤：一审 → 二审 → 终审
 model TaskCategoryStageTemplate {
-  id             String       @id @default(cuid())       /// 模板唯一标识
+  id String @id @default(cuid()) /// 模板唯一标识
 
-  taskCategoryId String       @db.VarChar(50)            /// 所属任务分类ID
+  taskCategoryId String       @db.VarChar(50) /// 所属任务分类ID
   taskCategory   TaskCategory @relation(fields: [taskCategoryId], references: [id]) /// 所属任务分类（多对一：通过 taskCategoryId 关联到 TaskCategory 表的 id）
 
-  stepOrder      Int                                     /// 步骤顺序：1, 2, 3...（决定审核流程的顺序）
-  name           String       @db.VarChar(100)           /// 步骤名称，比如 "一审"、"二审"、"终审"
-  isRequired     Boolean      @default(true)             /// 是否必须步骤（false 表示可跳过）
+  stepOrder  Int /// 步骤顺序：1, 2, 3...（决定审核流程的顺序）
+  name       String  @db.VarChar(100) /// 步骤名称，比如 "一审"、"二审"、"终审"
+  isRequired Boolean @default(true) /// 是否必须步骤（false 表示可跳过）
 
   @@unique([taskCategoryId, stepOrder]) /// 同一分类下步骤顺序唯一
   @@map("task_category_stage_templates")
@@ -109,27 +115,27 @@ model TaskCategoryStageTemplate {
 // ==================== 项目模块 ====================
 /// 项目表：管理造价项目的基本信息
 model Project {
-  id             String  @id @default(cuid())           /// 项目唯一标识
-  projectName    String  @db.VarChar(200)               /// 项目名称
-  projectType    String  @db.VarChar(100)               /// 项目类型（如：建筑工程、市政工程等）
-  clientUnit     String  @db.VarChar(200)               /// 委托单位
-  projectSource  String? @db.VarChar(100)               /// 项目来源（可选）
-  contractAmount String? @db.VarChar(50)                /// 合同金额（可选）
-  description    String? @db.Text                       /// 项目描述
-  attachments    Json?                                  /// 附件列表（JSON格式）
+  id             String  @id @default(cuid()) /// 项目唯一标识
+  projectName    String  @db.VarChar(200) /// 项目名称
+  projectType    String  @db.VarChar(100) /// 项目类型（如：建筑工程、市政工程等）
+  clientUnit     String  @db.VarChar(200) /// 委托单位
+  projectSource  String? @db.VarChar(100) /// 项目来源（可选）
+  contractAmount String? @db.VarChar(50) /// 合同金额（可选）
+  description    String? @db.Text /// 项目描述
+  attachments    Json? /// 附件列表（JSON格式）
 
-  status    ProjectStatus @default(ACTIVE)              /// 项目状态
-  startDate DateTime?                                   /// 开始日期
-  endDate   DateTime?                                   /// 结束日期
-  creatorId String        @map("creator_id")            /// 创建人ID
+  status    ProjectStatus @default(ACTIVE) /// 项目状态
+  startDate DateTime? /// 开始日期
+  endDate   DateTime? /// 结束日期
+  creatorId String        @map("creator_id") /// 创建人ID
   creator   User          @relation("ProjectCreator", fields: [creatorId], references: [id]) /// 创建人（多对一：通过 creatorId 关联到 User 表的 id，关系名 ProjectCreator）
   createdAt DateTime      @default(now()) @map("created_at") /// 创建时间
-  updatedAt DateTime      @updatedAt @map("updated_at")      /// 更新时间
+  updatedAt DateTime      @updatedAt @map("updated_at") /// 更新时间
 
   // 关联关系（反向关系）
-  tasks     Task[]                                      /// 项目下的任务列表（一对多：Task 表中 projectId 指向本项目的所有任务）
+  tasks Task[] /// 项目下的任务列表（一对多：Task 表中 projectId 指向本项目的所有任务）
 
-  @@index([creatorId])   /// 创建人索引
+  @@index([creatorId]) /// 创建人索引
   @@index([projectName]) /// 项目名称索引
   @@index([projectType]) /// 项目类型索引
   @@map("projects")
@@ -137,40 +143,39 @@ model Project {
 
 /// 项目状态枚举
 enum ProjectStatus {
-  ACTIVE     /// 进行中
-  COMPLETED  /// 已完成
-  SUSPENDED  /// 已暂停
-  CANCELLED  /// 已取消
+  ACTIVE /// 进行中
+  COMPLETED /// 已完成
+  SUSPENDED /// 已暂停
+  CANCELLED /// 已取消
 }
 
 // ==================== 任务模块 ====================
 /// 任务表：具体的造价任务，包含任务信息、参与人员和审核流程
 model Task {
-  id             String   @id @default(cuid())           /// 任务唯一标识
-  taskName       String   @db.VarChar(200)               /// 任务名称
+  id       String @id @default(cuid()) /// 任务唯一标识
+  taskName String @db.VarChar(200) /// 任务名称
 
-  projectId      String?  @map("project_id")            /// 所属项目ID（可选，允许独立任务）
-  project        Project? @relation(fields: [projectId], references: [id]) /// 所属项目（多对一：通过 projectId 关联到 Project 表的 id）
+  projectId String?  @map("project_id") /// 所属项目ID（可选，允许独立任务）
+  project   Project? @relation(fields: [projectId], references: [id]) /// 所属项目（多对一：通过 projectId 关联到 Project 表的 id）
 
-  isReviewRequired Boolean @default(false)               /// 是否需要审核（false=直接完成，true=走审核流程）
+  isReviewRequired Boolean @default(false) /// 是否需要审核（false=直接完成，true=走审核流程）
 
-  taskCategoryId String   @map("task_category_id")      /// 任务分类ID（一个任务只能选一种分类）
+  taskCategoryId String       @map("task_category_id") /// 任务分类ID（一个任务只能选一种分类）
   taskCategory   TaskCategory @relation(fields: [taskCategoryId], references: [id]) /// 任务分类（多对一：通过 taskCategoryId 关联到 TaskCategory 表的 id）
 
-  taskLeaderId   String                                 /// 任务负责人ID
-  taskLeader     User     @relation("TaskLeader", fields: [taskLeaderId], references: [id]) /// 任务负责人（多对一：通过 taskLeaderId 关联到 User 表的 id，关系名 TaskLeader）
+  taskLeaderId String /// 任务负责人ID
+  taskLeader   User   @relation("TaskLeader", fields: [taskLeaderId], references: [id]) /// 任务负责人（多对一：通过 taskLeaderId 关联到 User 表的 id，关系名 TaskLeader）
 
-  participants   TaskParticipant[]                      /// 参与人员列表（一对多：TaskParticipant 表中 taskId 指向本任务的所有参与记录）
-  reviewConfig   TaskReviewConfig?                      /// 审核配置（一对一：TaskReviewConfig 表中 taskId 指向本任务的配置）
+  participants TaskParticipant[] /// 参与人员列表（一对多：TaskParticipant 表中 taskId 指向本任务的所有参与记录）
+  reviewConfig TaskReviewConfig? /// 审核配置（一对一：TaskReviewConfig 表中 taskId 指向本任务的配置）
 
+  description String? @db.Text /// 任务说明
+  attachments Json? /// 附件列表（JSON格式）
 
-  description    String?  @db.Text                       /// 任务说明
-  attachments    Json?                                  /// 附件列表（JSON格式）
+  createdAt DateTime @default(now()) @map("created_at") /// 创建时间
+  updatedAt DateTime @updatedAt @map("updated_at") /// 更新时间
 
-  createdAt      DateTime @default(now()) @map("created_at") /// 创建时间
-  updatedAt      DateTime @updatedAt @map("updated_at")      /// 更新时间
-
-  @@index([projectId])   /// 项目索引
+  @@index([projectId]) /// 项目索引
   @@index([taskCategoryId]) /// 任务分类索引
   @@map("tasks")
 }
@@ -178,12 +183,12 @@ model Task {
 /// 任务参与人员（多对多关系表）
 /// 说明：记录哪些用户参与了这个任务
 model TaskParticipant {
-  id     String @id @default(cuid())                    /// 记录唯一标识
+  id String @id @default(cuid()) /// 记录唯一标识
 
-  taskId String                                         /// 任务ID
+  taskId String /// 任务ID
   task   Task   @relation(fields: [taskId], references: [id]) /// 任务（多对一：通过 taskId 关联到 Task 表的 id）
 
-  userId String                                         /// 用户ID
+  userId String /// 用户ID
   user   User   @relation(fields: [userId], references: [id]) /// 参与用户（多对一：通过 userId 关联到 User 表的 id）
 
   @@unique([taskId, userId]) /// 同一任务下用户唯一
@@ -195,16 +200,16 @@ model TaskParticipant {
 /// 任务审核配置：把“分类的步骤模板”实例化到具体任务上
 /// 说明：创建任务时，根据任务分类的模板生成这个配置，并为每个步骤指定审核人
 model TaskReviewConfig {
-  id        String   @id @default(cuid())               /// 配置唯一标识
+  id String @id @default(cuid()) /// 配置唯一标识
 
-  taskId    String   @unique @map("task_id")          /// 任务ID（一个任务只有一个配置）
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade) /// 任务（一对一：通过 taskId 关联到 Task 表的 id，级联删除）
+  taskId String @unique @map("task_id") /// 任务ID（一个任务只有一个配置）
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade) /// 任务（一对一：通过 taskId 关联到 Task 表的 id，级联删除）
 
   // 关联关系（反向关系）
-  reviewStages TaskReviewStage[]                      /// 审核步骤列表（一对多：TaskReviewStage 表中 reviewConfigId 指向本配置的所有步骤）
+  reviewStages TaskReviewStage[] /// 审核步骤列表（一对多：TaskReviewStage 表中 reviewConfigId 指向本配置的所有步骤）
 
-  createdAt  DateTime @default(now()) @map("created_at") /// 创建时间
-  updatedAt  DateTime @updatedAt @map("updated_at")      /// 更新时间
+  createdAt DateTime @default(now()) @map("created_at") /// 创建时间
+  updatedAt DateTime @updatedAt @map("updated_at") /// 更新时间
 
   @@map("task_review_configs")
 }
@@ -213,25 +218,24 @@ model TaskReviewConfig {
 /// 说明：每个步骤对应一个审核人，记录审核状态和时间
 /// 操作流程：PENDING → IN_PROGRESS → APPROVED/REJECTED
 model TaskReviewStage {
-  id             String           @id @default(cuid())       /// 步骤唯一标识
+  id String @id @default(cuid()) /// 步骤唯一标识
 
-  reviewConfigId String           @map("review_config_id")  /// 所属审核配置ID
+  reviewConfigId String           @map("review_config_id") /// 所属审核配置ID
   reviewConfig   TaskReviewConfig @relation(fields: [reviewConfigId], references: [id], onDelete: Cascade) /// 所属审核配置（多对一：通过 reviewConfigId 关联到 TaskReviewConfig 表的 id，级联删除）
 
-  stepOrder      Int                                         /// 步骤顺序：1, 2, 3...（从模板复制，决定审核先后顺序）
-  name           String           @db.VarChar(100)           /// 步骤名称（从模板复制），如 "一审"、"二审"
-  isRequired     Boolean          @default(true)             /// 是否必须步骤（从模板复制，false 表示可跳过）
+  stepOrder  Int /// 步骤顺序：1, 2, 3...（从模板复制，决定审核先后顺序）
+  name       String  @db.VarChar(100) /// 步骤名称（从模板复制），如 "一审"、"二审"
+  isRequired Boolean @default(true) /// 是否必须步骤（从模板复制，false 表示可跳过）
 
-  reviewerId     String           @map("reviewer_id")        /// 审核人ID（创建任务时指定）
-  reviewer       User             @relation("TaskReviewer", fields: [reviewerId], references: [id]) /// 审核人（多对一：通过 reviewerId 关联到 User 表的 id，关系名 TaskReviewer）
+  reviewerId String @map("reviewer_id") /// 审核人ID（创建任务时指定）
+  reviewer   User   @relation("TaskReviewer", fields: [reviewerId], references: [id]) /// 审核人（多对一：通过 reviewerId 关联到 User 表的 id，关系名 TaskReviewer）
 
-  status         ReviewStageStatus @default(PENDING)        /// 当前步骤状态
-  startedAt      DateTime?                                   /// 步骤开始时间（审核人开始处理时记录）
-  completedAt    DateTime?                                   /// 步骤完成时间（通过或驳回时记录）
+  status      ReviewStageStatus @default(PENDING) /// 当前步骤状态
+  startedAt   DateTime? /// 步骤开始时间（审核人开始处理时记录）
+  completedAt DateTime? /// 步骤完成时间（通过或驳回时记录）
 
-
-  createdAt      DateTime         @default(now()) @map("created_at") /// 创建时间
-  updatedAt      DateTime         @updatedAt @map("updated_at")      /// 更新时间
+  createdAt DateTime @default(now()) @map("created_at") /// 创建时间
+  updatedAt DateTime @updatedAt @map("updated_at") /// 更新时间
 
   @@unique([reviewConfigId, stepOrder]) /// 同一配置下步骤顺序唯一
   @@map("task_review_stages")
@@ -239,9 +243,9 @@ model TaskReviewStage {
 
 /// 审核步骤状态枚举
 enum ReviewStageStatus {
-  PENDING      /// 未开始：等待前序步骤完成
-  IN_PROGRESS  /// 审核中：审核人正在处理
-  APPROVED     /// 已通过：此步骤审核通过
-  REJECTED     /// 已驳回：此步骤审核被驳回
-  SKIPPED      /// 已跳过：非必填步骤被跳过
+  PENDING /// 未开始：等待前序步骤完成
+  IN_PROGRESS /// 审核中：审核人正在处理
+  APPROVED /// 已通过：此步骤审核通过
+  REJECTED /// 已驳回：此步骤审核被驳回
+  SKIPPED /// 已跳过：非必填步骤被跳过
 }
