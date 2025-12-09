@@ -12,7 +12,7 @@ import {
   ListResponse,
   ResponseMessage,
 } from '../../common/decorators/api-response.decorator';
-import { UserCreatedDto } from './dto/user.dto';
+import { UserCreatedDto, UserUpdateDto } from './dto/user.dto';
 import { UserService } from './user.service';
 
 @Controller('user')
@@ -44,5 +44,17 @@ export class UserController {
   @Post('createUser')
   create(@Body() createdUser: UserCreatedDto) {
     return this.UserService.created(createdUser);
+  }
+
+  @ResponseMessage('更新用户成功')
+  @Post('/updateUser/:id')
+  update(@Param('id') id: String, @Body() updateUser: UserUpdateDto) {
+    return this.UserService.update(id, updateUser);
+  }
+
+  @ResponseMessage('查询用户详情')
+  @Post('/detail/:id')
+  find(@Param('id') id) {
+    return this.UserService.findOnly(id);
   }
 }

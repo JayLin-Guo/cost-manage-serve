@@ -62,3 +62,29 @@ export class UserCreatedDto {
   @ApiProperty({ description: '是否启用' })
   isActive?: boolean;
 }
+
+export class UserUpdateDto {
+  @IsString()
+  id: string;
+
+  @IsString()
+  username: string;
+
+  @IsString()
+  name: string;
+
+  @IsString()
+  role: string;
+
+  @IsString()
+  email?: string;
+
+  @IsString()
+  phone?: string;
+
+  @IsBoolean()
+  isActive?: boolean;
+
+  @IsString()
+  department: string;
+}

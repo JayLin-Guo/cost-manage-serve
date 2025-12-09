@@ -1,6 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserCreatedDto, UserPaginationDto } from './dto/user.dto';
+import {
+  UserCreatedDto,
+  UserPaginationDto,
+  UserUpdateDto,
+} from './dto/user.dto';
 
 @Injectable()
 export class UserService {
@@ -41,7 +50,38 @@ export class UserService {
 
   // 查询单个
   async findOne(id: string) {
-    return this.Prisma.user.findUnique({ where: { id } });
+    const userInfo = this.Prisma.user.findUnique({
+      where: { id },
+      include: {},
+    });
+    if (!userInfo) {
+      throw new NotFoundException(`用户 ${id} 不存在`);
+    }
+
+    return userInfo;
+  }
+
+  // 查找详情
+  async findOnly(id: string) {
+    const userDetail = await this.Prisma.user.findUnique({
+      where: { id },
+    });
+
+    // 分类有值的时候，去查找分类code
+    if (userDetail?.roleCategoryId) {
+      const categoryDetail = await this.Prisma.roleCategory.findUnique({
+        where: { id: userDetail.roleCategoryId },
+      });
+      return {
+        ...userDetail,
+        role: categoryDetail?.code,
+      };
+    }
+
+    return {
+      ...userDetail,
+      role: '',
+    };
   }
 
   // 增加用户
@@ -77,5 +117,39 @@ export class UserService {
     } catch (error) {
       throw new Error(`创建用户失败: ${error.message}`);
     }
+  }
+
+  // 修改用户
+  async update(id, data: UserUpdateDto) {
+    // 检查用户是否存在
+    await this.findOne(id);
+
+    let roleCategoryId = '';
+
+    // 如果提供了角色code，根据code查找对应的id
+    if (data.role) {
+      const roleCategory = await this.Prisma.roleCategory.findFirst({
+        where: { code: data.role },
+      });
+
+      if (!roleCategory) {
+        throw new BadRequestException(`角色分类 ${data.role} 不存在`);
+      }
+
+      roleCategoryId = roleCategory.id;
+    }
+
+    return this.Prisma.user.update({
+      where: { id },
+      data: {
+        username: data.username,
+        name: data.name,
+        phone: data.phone,
+        roleCategoryId: roleCategoryId || null,
+        departmentId: data.department || null,
+        email: data.email || '',
+        isActive: data.isActive,
+      },
+    });
   }
 }
