@@ -41,7 +41,7 @@ export class RoleCategoryService {
 
   // 分页查找
   async findAllByPagination(query: RoleCategoryPaginationDto) {
-    const { pageNum = '1', pageSize = '10', keyword, name, code } = query;
+    const { pageNum = '1', pageSize = '10', name, code } = query;
 
     const whereCondition =
       !name && !code
