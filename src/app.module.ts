@@ -10,13 +10,13 @@ import { ReviewConfigModule } from './modules/review-config/review-config.module
 import { ReviewStepTemplateModule } from './modules/review-step-template/review-step-template.module';
 import { RoleCategoryModule } from './modules/role-categories/role-category.module';
 import { TaskCategoryModule } from './modules/task-categories/task-category.module';
-import { UserModel } from './modules/users/user.module';
+import { UserModule } from './modules/users/user.module';
 
 @Module({
   imports: [
     PrismaModule,
     ProjectsModule,
-    UserModel,
+    UserModule,
     RoleCategoryModule,
     TaskCategoryModule,
     ReviewStepTemplateModule,

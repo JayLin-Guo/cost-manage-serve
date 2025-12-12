@@ -50,7 +50,7 @@ export class UserService {
 
   // 查询单个
   async findOne(id: string) {
-    const userInfo = this.Prisma.user.findUnique({
+    const userInfo = await this.Prisma.user.findUnique({
       where: { id },
       include: {},
     });
@@ -84,8 +84,19 @@ export class UserService {
     };
   }
 
+  async findUserByRole(roleID: string) {
+    return this.Prisma.user.findMany({
+      where: { roleCategoryId: roleID },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+      },
+    });
+  }
+
   // 增加用户
-  async created(createdDto: UserCreatedDto, creatorId?: string) {
+  async created(createdDto: UserCreatedDto) {
     if (createdDto.password !== createdDto.confirmPassword) {
       throw new Error(`两次密码不相符 : ${createdDto.password}`);
     }
@@ -108,19 +119,15 @@ export class UserService {
       isActive: createdDto.isActive ?? true,
     };
 
-    try {
-      const result = await this.Prisma.user.create({
-        data,
-        include: {},
-      });
-      return result;
-    } catch (error) {
-      throw new Error(`创建用户失败: ${error.message}`);
-    }
+    const result = await this.Prisma.user.create({
+      data,
+      include: {},
+    });
+    return result;
   }
 
   // 修改用户
-  async update(id, data: UserUpdateDto) {
+  async update(id: string, data: UserUpdateDto) {
     // 检查用户是否存在
     await this.findOne(id);
 
@@ -139,7 +146,7 @@ export class UserService {
       roleCategoryId = roleCategory.id;
     }
 
-    return this.Prisma.user.update({
+    return await this.Prisma.user.update({
       where: { id },
       data: {
         username: data.username,

@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { UserService } from '../users/user.service';
 import {
   ConfigureReviewStepsDto,
   CreateReviewConfigDto,
@@ -10,7 +11,10 @@ import {
 @Injectable()
 export class ReviewConfigService {
   private readonly logger = new Logger(ReviewConfigService.name);
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly userService: UserService,
+  ) {}
 
   async create(data: CreateReviewConfigDto) {
     // 检查code是否存在
@@ -362,6 +366,89 @@ export class ReviewConfigService {
       },
       orderBy: { stepOrder: 'asc' },
     });
+  }
+
+  // 根据任务分类查询审核配置
+  async getReviewConfigByTaskCategory(taskCategoryId: string) {
+    // 查找到当前的审核配置id
+
+    const taskCategory = await this.prisma.taskCategory.findUnique({
+      where: { id: taskCategoryId },
+      select: {
+        reviewConfigId: true,
+      },
+    });
+
+    if (!taskCategory) {
+      throw new BadRequestException('任务分类不存在');
+    }
+
+    const reviewConfig = await this.prisma.reviewStep.findMany({
+      where: { reviewConfigId: taskCategory.reviewConfigId as string },
+      select: {
+        id: true,
+        // stepOrder: true,
+        // isRequired: true,
+        reviewStepTemplateId: true,
+        reviewConfigId: true,
+        reviewStepTemplate: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            isActive: true,
+            stepRoles: {
+              select: {
+                id: true,
+                roleCategory: {
+                  select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { stepOrder: 'asc' },
+    });
+    this.logger.log('reviewConfig', reviewConfig);
+    if (!reviewConfig || reviewConfig.length === 0) {
+      return [];
+    }
+
+    this.logger.log('reviewConfig', reviewConfig[0].reviewStepTemplate);
+
+    // 过滤出激活的步骤
+    const activeSteps = reviewConfig.filter(item => {
+      return item.reviewStepTemplate.isActive;
+    });
+
+    // 异步获取每个角色对应的用户列表
+    const response = await Promise.all(
+      activeSteps.map(async item => {
+        const roleId = item.reviewStepTemplate.stepRoles[0].roleCategory.id;
+
+        // 根据角色ID查询用户列表
+        const reviewPersonnel = await this.userService.findUserByRole(roleId);
+
+        return {
+          reviewStepTemplateId: item.reviewStepTemplateId,
+          reviewConfigId: item.reviewConfigId,
+          reviewStepTemplateName: item.reviewStepTemplate.name,
+          reviewStepTemplateCode: item.reviewStepTemplate.code,
+          reviewStepTemplateStepId: item.reviewStepTemplate.id,
+          roleType: item.reviewStepTemplate.stepRoles[0].roleCategory.code,
+          roleId: roleId,
+          roleName: item.reviewStepTemplate.stepRoles[0].roleCategory.name,
+          reviewPersonnel: reviewPersonnel || [], // 填充用户列表
+        };
+      }),
+    );
+
+    return response;
   }
 
   async delete(id: string) {

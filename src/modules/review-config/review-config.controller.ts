@@ -83,4 +83,15 @@ export class ReviewConfigController {
   getStepsConfig(@Param('id') id: string) {
     return this.reviewConfigService.getSteps(id);
   }
+
+  @ApiOperation({
+    summary: '根据任务分类获取审核配置',
+    description: '根据任务分类获取审核配置',
+  })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  @ResponseMessage('获取审核步骤配置成功')
+  @Get('getReviewConfigByTaskCategory/:id')
+  getReviewConfigByTaskCategory(@Param('id') id: string) {
+    return this.reviewConfigService.getReviewConfigByTaskCategory(id);
+  }
 }

@@ -12,7 +12,11 @@ import {
   ListResponse,
   ResponseMessage,
 } from '../../common/decorators/api-response.decorator';
-import { UserCreatedDto, UserUpdateDto } from './dto/user.dto';
+import {
+  UserCreatedDto,
+  UserPaginationDto,
+  UserUpdateDto,
+} from './dto/user.dto';
 import { UserService } from './user.service';
 
 @Controller('user')
@@ -25,7 +29,7 @@ export class UserController {
   @ApiResponse({ status: 200, description: '成功获取用户列表' })
   @ListResponse('获取用户列表成功')
   @Get('getUserList')
-  findAll(@Query() query: any) {
+  findAll(@Query() query: UserPaginationDto) {
     this.logger.log('获取用户数据？');
     if (query.pageNum) {
       return this.UserService.findAllByPagination(query);
@@ -48,7 +52,7 @@ export class UserController {
 
   @ResponseMessage('更新用户成功')
   @Post('/updateUser/:id')
-  update(@Param('id') id: String, @Body() updateUser: UserUpdateDto) {
+  update(@Param('id') id: string, @Body() updateUser: UserUpdateDto) {
     return this.UserService.update(id, updateUser);
   }
 
@@ -56,5 +60,11 @@ export class UserController {
   @Post('/detail/:id')
   find(@Param('id') id) {
     return this.UserService.findOnly(id);
+  }
+
+  @ResponseMessage('根据角色查询人员列表')
+  @Post('/findUserByRole/:id')
+  findUserByRole(@Param('id') id: string) {
+    return this.UserService.findUserByRole(id);
   }
 }
