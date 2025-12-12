@@ -21,6 +21,18 @@ export class ReviewConfigService {
       throw new BadRequestException(`审核配置编码 ${data.code} 已存在`);
     }
 
+    // 如果有任务分类，检查是否存在
+    if (data.taskCategoryIds && data.taskCategoryIds.length > 0) {
+      const taskCategories = await this.prisma.taskCategory.findMany({
+        where: { id: { in: data.taskCategoryIds } },
+      });
+
+      if (taskCategories.length !== data.taskCategoryIds.length) {
+        throw new BadRequestException('部分任务分类不存在');
+      }
+    }
+
+    // 第一步：创建 reviewConfig
     const reviewConfig = await this.prisma.reviewConfig.create({
       data: {
         name: data.name,
@@ -30,6 +42,7 @@ export class ReviewConfigService {
       },
     });
 
+    // 第二步：关联任务分类
     if (data.taskCategoryIds && data.taskCategoryIds.length > 0) {
       await this.prisma.taskCategory.updateMany({
         where: { id: { in: data.taskCategoryIds } },
@@ -37,20 +50,24 @@ export class ReviewConfigService {
       });
     }
 
-    return reviewConfig;
+    // 返回包含关联数据的完整对象
+    return this.prisma.reviewConfig.findUnique({
+      where: { id: reviewConfig.id },
+      include: {
+        taskCategories: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+    });
   }
 
   // 分页查找
   async findAllByPagination(query: ReviewConfigPaginationDto) {
     const { pageNum = '1', pageSize = '10', name, code } = query;
-
-    if (!name && !code) {
-      return this.prisma.reviewConfig.findMany({
-        skip: (Number(pageNum) - 1) * Number(pageSize),
-        take: Number(pageSize),
-        orderBy: { createdAt: 'desc' },
-      });
-    }
 
     const whereCondition =
       name || code
@@ -59,7 +76,7 @@ export class ReviewConfigService {
           }
         : {};
 
-    const [list, total] = await Promise.all([
+    const [dataList, total] = await Promise.all([
       this.prisma.reviewConfig.findMany({
         where: whereCondition,
         skip: (Number(pageNum) - 1) * Number(pageSize),
@@ -99,6 +116,12 @@ export class ReviewConfigService {
       }),
     ]);
 
+    // 组合数据，添加关联状态字段
+    const list = dataList.map(item => ({
+      ...item,
+      isRelevance: item._count.taskCategories > 0, // 使用已查询的 _count 数据
+    }));
+
     return {
       list,
       total,
@@ -109,7 +132,7 @@ export class ReviewConfigService {
 
   // 查找全部，不带分页结构
   async findAll() {
-    return this.prisma.reviewConfig.findMany({
+    const list = await this.prisma.reviewConfig.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
         steps: {
@@ -140,6 +163,12 @@ export class ReviewConfigService {
         },
       },
     });
+
+    // 添加关联状态字段
+    return list.map(item => ({
+      ...item,
+      isRelevance: item._count.taskCategories > 0,
+    }));
   }
 
   // 查找单个
@@ -218,16 +247,21 @@ export class ReviewConfigService {
       },
     });
 
-    if (data.taskCategoryIds && data.taskCategoryIds.length > 0) {
+    // 如果提供了 taskCategoryIds（包括空数组），重新关联
+    if (data.taskCategoryIds !== undefined) {
+      // 先清空当前配置关联的所有任务分类
       await this.prisma.taskCategory.updateMany({
         where: { reviewConfigId: id },
         data: { reviewConfigId: null },
       });
 
-      await this.prisma.taskCategory.updateMany({
-        where: { id: { in: data.taskCategoryIds } },
-        data: { reviewConfigId: id },
-      });
+      // 如果有新的任务分类ID，建立新的关联
+      if (data.taskCategoryIds.length > 0) {
+        await this.prisma.taskCategory.updateMany({
+          where: { id: { in: data.taskCategoryIds } },
+          data: { reviewConfigId: id },
+        });
+      }
     }
 
     return;

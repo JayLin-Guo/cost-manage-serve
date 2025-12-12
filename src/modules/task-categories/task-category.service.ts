@@ -47,6 +47,26 @@ export class TaskCategoryService {
     });
   }
 
+  // 获取任务分类下拉列表
+  async findListBySelect() {
+    const list = await this.prisma.taskCategory.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        reviewConfigId: true, // 添加这个字段
+      },
+    });
+
+    return list.map(item => {
+      return {
+        ...item,
+        isRelevance: !!item.reviewConfigId, // 是否已关联审核配置
+      };
+    });
+  }
+
   // 分页查找
   async findAllByPagination(query: TaskCategoryPaginationDto) {
     const { pageNum = '1', pageSize = '10', keyword } = query;

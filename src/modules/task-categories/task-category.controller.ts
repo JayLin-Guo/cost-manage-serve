@@ -51,6 +51,17 @@ export class TaskCategoryController {
   }
 
   @ApiOperation({
+    summary: '获取任务分类下拉列表',
+    description: '获取所有任务分类的下拉列表',
+  })
+  @ApiResponse({ status: 200, description: '成功获取任务分类列表' })
+  @ListResponse('获取任务分类下拉列表成功')
+  @Get('getRelevanceListByTaskCategory')
+  findAllList() {
+    return this.taskCategoryService.findListBySelect();
+  }
+
+  @ApiOperation({
     summary: '获取任务分类详情',
     description: '根据ID获取任务分类详情',
   })
