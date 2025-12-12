@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  ConfigureReviewStepsDto,
   CreateReviewConfigDto,
   ReviewConfigPaginationDto,
   UpdateReviewConfigDto,
@@ -265,6 +266,102 @@ export class ReviewConfigService {
     }
 
     return;
+  }
+
+  // ==================== 审核步骤管理 ====================
+
+  // 设置审核配置的步骤（覆盖所有步骤）
+  async setSteps(configId: string, stepsData: ConfigureReviewStepsDto) {
+    // 检查审核配置是否存在
+    await this.findOne(configId);
+
+    // 如果没有步骤数据，清空所有步骤
+    if (!stepsData.steps || stepsData.steps.length === 0) {
+      await this.prisma.reviewStep.deleteMany({
+        where: { reviewConfigId: configId },
+      });
+      return [];
+    }
+
+    // 检查步骤模板是否存在
+    const templateIds = stepsData.steps.map(s => s.reviewStepTemplateId);
+    const templates = await this.prisma.reviewStepTemplate.findMany({
+      where: { id: { in: templateIds } },
+    });
+
+    if (templates.length !== templateIds.length) {
+      throw new BadRequestException('部分审核步骤模板不存在');
+    }
+
+    // 检查步骤顺序是否重复
+    // const orders = stepsData.steps.map(s => s.stepOrder);
+    // const uniqueOrders = new Set(orders);
+    // if (orders.length !== uniqueOrders.size) {
+    //   throw new BadRequestException('步骤顺序不能重复');
+    // }
+
+    this.logger.log('configId', configId);
+    // 使用事务：先删除旧步骤，再创建新步骤
+    return this.prisma.$transaction(async prisma => {
+      // 删除当前配置的所有步骤
+      await prisma.reviewStep.deleteMany({
+        where: { reviewConfigId: configId },
+      });
+
+      // 创建新的步骤
+      const createdSteps = await Promise.all(
+        stepsData.steps.map(step =>
+          prisma.reviewStep.create({
+            data: {
+              reviewConfigId: configId,
+              reviewStepTemplateId: step.reviewStepTemplateId,
+              stepOrder: step.stepOrder,
+              isRequired: step.isRequired ?? true,
+            },
+            include: {
+              reviewStepTemplate: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                  stepType: true,
+                },
+              },
+            },
+          }),
+        ),
+      );
+
+      return createdSteps.sort((a, b) => a.stepOrder - b.stepOrder);
+    });
+  }
+
+  // 获取审核配置的所有步骤
+  async getSteps(configId: string) {
+    // 检查审核配置是否存在
+    await this.findOne(configId);
+
+    return this.prisma.reviewStep.findMany({
+      where: { reviewConfigId: configId },
+      include: {
+        reviewStepTemplate: {
+          include: {
+            stepRoles: {
+              include: {
+                roleCategory: {
+                  select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { stepOrder: 'asc' },
+    });
   }
 
   async delete(id: string) {

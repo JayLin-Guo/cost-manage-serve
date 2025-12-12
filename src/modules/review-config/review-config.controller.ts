@@ -7,15 +7,19 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
+  ConfigureReviewStepsDto,
   CreateReviewConfigDto,
   ReviewConfigPaginationDto,
   UpdateReviewConfigDto,
 } from './dto/review-config.dto';
 import { ReviewConfigService } from './review-config.service';
 
-import { ListResponse } from '../../common/decorators/api-response.decorator';
+import {
+  ListResponse,
+  ResponseMessage,
+} from '../../common/decorators/api-response.decorator';
 
 @Controller('review-config')
 @ApiTags('review-config')
@@ -51,5 +55,32 @@ export class ReviewConfigController {
     @Body() updateDto: UpdateReviewConfigDto,
   ) {
     return this.reviewConfigService.update(id, updateDto);
+  }
+
+  // ==================== 审核步骤管理接口 ====================
+
+  @ApiOperation({
+    summary: '配置审核步骤',
+    description: '为审核配置设置步骤流程（覆盖模式，传空数组可清空所有步骤）',
+  })
+  @ApiResponse({ status: 200, description: '配置成功' })
+  @ResponseMessage('配置审核步骤成功')
+  @Post('configure-steps/:id')
+  configureSteps(
+    @Param('id') id: string,
+    @Body() stepsData: ConfigureReviewStepsDto,
+  ) {
+    return this.reviewConfigService.setSteps(id, stepsData);
+  }
+
+  @ApiOperation({
+    summary: '获取审核步骤配置',
+    description: '获取指定审核配置的步骤流程',
+  })
+  @ApiResponse({ status: 200, description: '获取成功' })
+  @ResponseMessage('获取审核步骤配置成功')
+  @Get('steps/:id')
+  getStepsConfig(@Param('id') id: string) {
+    return this.reviewConfigService.getSteps(id);
   }
 }

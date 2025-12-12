@@ -177,36 +177,13 @@ export class ReviewConfigPaginationDto {
   code?: string;
 }
 
-export class AddReviewStepDto {
-  @IsString()
+export class ConfigureReviewStepsDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ReviewStepConfigDto)
   @ApiProperty({
-    description: '审核步骤模板ID',
-    example: 'clxxxxx',
-  })
-  reviewStepTemplateId: string;
-
-  @IsInt()
-  @Min(1)
-  @ApiProperty({
-    description: '步骤顺序',
-    example: 1,
-  })
-  stepOrder: number;
-
-  @IsBoolean()
-  @IsOptional()
-  @ApiProperty({
-    description: '是否必须步骤',
-    example: true,
-    required: false,
-  })
-  isRequired?: boolean;
-}
-
-export class BatchAddReviewStepsDto {
-  @ApiProperty({
-    description: '审核步骤列表',
-    type: [AddReviewStepDto],
+    description: '审核步骤配置列表',
+    type: [ReviewStepConfigDto],
     example: [
       {
         reviewStepTemplateId: 'clxxxxx',
@@ -220,28 +197,7 @@ export class BatchAddReviewStepsDto {
       },
     ],
   })
-  steps: AddReviewStepDto[];
-}
-
-export class UpdateReviewStepDto {
-  @IsInt()
-  @Min(1)
-  @IsOptional()
-  @ApiProperty({
-    description: '步骤顺序',
-    example: 1,
-    required: false,
-  })
-  stepOrder?: number;
-
-  @IsBoolean()
-  @IsOptional()
-  @ApiProperty({
-    description: '是否必须步骤',
-    example: true,
-    required: false,
-  })
-  isRequired?: boolean;
+  steps: ReviewStepConfigDto[];
 }
 
 // 分配审核配置给任务分类
