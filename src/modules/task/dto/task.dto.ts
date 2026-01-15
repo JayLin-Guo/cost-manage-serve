@@ -1,5 +1,33 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+
+// 审核步骤分配DTO
+export class ReviewStageAssignmentDto {
+  @IsString()
+  @ApiProperty({
+    description: '步骤模板ID（从ReviewStepTemplate表）',
+    example: 'step_template_123456',
+  })
+  stepConfigId: string;
+
+  @IsString()
+  @ApiProperty({ description: '步骤名称', example: '一审' })
+  stepName: string;
+
+  @IsString()
+  @ApiProperty({
+    description: '审核人ID（具体的用户ID）',
+    example: 'user_123456',
+  })
+  reviewerId: string;
+}
 
 export class CreateTaskDto {
   @IsString()
@@ -7,13 +35,8 @@ export class CreateTaskDto {
   taskName: string;
 
   @IsString()
-  @IsOptional()
-  @ApiProperty({
-    description: '所属项目ID',
-    example: 'proj_123456',
-    required: false,
-  })
-  projectId?: string;
+  @ApiProperty({ description: '所属项目ID', example: 'proj_123456' })
+  projectId: string;
 
   @IsBoolean()
   @IsOptional()
@@ -37,6 +60,34 @@ export class CreateTaskDto {
     required: false,
   })
   participantIds?: string[];
+
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => ReviewStageAssignmentDto)
+  @ApiProperty({
+    description: '审核步骤分配列表（当isReviewRequired为true时必填）',
+    example: [
+      {
+        stepConfigId: 'step_template_001',
+        stepName: '一审',
+        reviewerId: 'user_123456',
+      },
+      {
+        stepConfigId: 'step_template_002',
+        stepName: '二审',
+        reviewerId: 'user_789012',
+      },
+      {
+        stepConfigId: 'step_template_003',
+        stepName: '终审',
+        reviewerId: 'user_345678',
+      },
+    ],
+    type: [ReviewStageAssignmentDto],
+    required: false,
+  })
+  reviewStageAssignments?: ReviewStageAssignmentDto[];
 
   @IsString()
   @IsOptional()
@@ -69,48 +120,6 @@ export class UpdateTaskDto {
     required: false,
   })
   taskName?: string;
-
-  @IsString()
-  @IsOptional()
-  @ApiProperty({
-    description: '所属项目ID',
-    example: 'proj_123456',
-    required: false,
-  })
-  projectId?: string;
-
-  @IsBoolean()
-  @IsOptional()
-  @ApiProperty({ description: '是否需要审核', example: true, required: false })
-  isReviewRequired?: boolean;
-
-  @IsString()
-  @IsOptional()
-  @ApiProperty({
-    description: '任务分类ID',
-    example: 'cat_123456',
-    required: false,
-  })
-  taskCategoryId?: string;
-
-  @IsString()
-  @IsOptional()
-  @ApiProperty({
-    description: '任务负责人ID',
-    example: 'user_123456',
-    required: false,
-  })
-  taskLeaderId?: string;
-
-  @IsArray()
-  @IsOptional()
-  @ApiProperty({
-    description: '参与人员ID列表',
-    example: ['user_123456', 'user_789012'],
-    type: [String],
-    required: false,
-  })
-  participantIds?: string[];
 
   @IsString()
   @IsOptional()
@@ -150,65 +159,4 @@ export class TaskPaginationDto {
   @IsOptional()
   @ApiProperty({ description: '项目ID筛选', example: 'proj_123456' })
   projectId?: string;
-
-  @IsString()
-  @IsOptional()
-  @ApiProperty({ description: '任务分类ID筛选', example: 'cat_123456' })
-  taskCategoryId?: string;
-
-  @IsString()
-  @IsOptional()
-  @ApiProperty({ description: '负责人ID筛选', example: 'user_123456' })
-  taskLeaderId?: string;
-
-  @IsBoolean()
-  @IsOptional()
-  @ApiProperty({ description: '是否需要审核筛选', example: true })
-  isReviewRequired?: boolean;
-}
-
-// 任务响应DTO（用于返回数据）
-export class TaskResponseDto {
-  @ApiProperty({ description: '任务ID' })
-  id: string;
-
-  @ApiProperty({ description: '任务名称' })
-  taskName: string;
-
-  @ApiProperty({ description: '所属项目ID', required: false })
-  projectId?: string;
-
-  @ApiProperty({ description: '是否需要审核' })
-  isReviewRequired: boolean;
-
-  @ApiProperty({ description: '任务分类ID' })
-  taskCategoryId: string;
-
-  @ApiProperty({ description: '任务负责人ID' })
-  taskLeaderId: string;
-
-  @ApiProperty({ description: '任务说明', required: false })
-  description?: string;
-
-  @ApiProperty({ description: '附件列表', required: false })
-  attachments?: any;
-
-  @ApiProperty({ description: '创建时间' })
-  createdAt: Date;
-
-  @ApiProperty({ description: '更新时间' })
-  updatedAt: Date;
-
-  // 关联数据
-  @ApiProperty({ description: '所属项目信息', required: false })
-  project?: any;
-
-  @ApiProperty({ description: '任务分类信息' })
-  taskCategory?: any;
-
-  @ApiProperty({ description: '任务负责人信息' })
-  taskLeader?: any;
-
-  @ApiProperty({ description: '参与人员列表' })
-  participants?: any[];
 }

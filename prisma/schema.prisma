@@ -55,6 +55,7 @@ model User {
   createdProjects  Project[]         @relation("ProjectCreator") /// 创建的项目列表（一对多：Project 表中 creatorId 指向本用户的所有项目）
   ledTasks         Task[]            @relation("TaskLeader") /// 负责的任务列表（一对多：Task 表中 taskLeaderId 指向本用户的所有任务）
   taskParticipants TaskParticipant[] /// 参与的任务列表（一对多：TaskParticipant 表中 userId 指向本用户的所有参与记录）
+  taskReviewStages TaskReviewStage[] @relation("TaskReviewer") /// 作为审核人的步骤列表（一对多：TaskReviewStage 表中 reviewerId 指向本用户的所有审核步骤）
 
   @@map("users")
 }
@@ -162,8 +163,8 @@ model Task {
   id       String @id @default(cuid()) /// 任务唯一标识
   taskName String @db.VarChar(200) /// 任务名称
 
-  projectId String?  @map("project_id") /// 所属项目ID（可选，允许独立任务）
-  project   Project? @relation(fields: [projectId], references: [id]) /// 所属项目（多对一：通过 projectId 关联到 Project 表的 id）
+  projectId String  @map("project_id") /// 所属项目ID（必填）
+  project   Project @relation(fields: [projectId], references: [id]) /// 所属项目（多对一：通过 projectId 关联到 Project 表的 id）
 
   isReviewRequired Boolean @default(false) /// 是否需要审核（false=直接完成，true=走审核流程）
 
@@ -174,9 +175,15 @@ model Task {
   taskLeader   User   @relation("TaskLeader", fields: [taskLeaderId], references: [id]) /// 任务负责人（多对一：通过 taskLeaderId 关联到 User 表的 id，关系名 TaskLeader）
 
   participants TaskParticipant[] /// 参与人员列表（一对多：TaskParticipant 表中 taskId 指向本任务的所有参与记录）
+  reviewConfig TaskReviewConfig? /// 审核配置实例（一对一：TaskReviewConfig 表中 taskId 指向本任务的配置）
 
   description String? @db.Text /// 任务说明
   attachments Json? /// 附件列表（JSON格式）
+
+  // 软删除字段
+  isDeleted Boolean @default(false) @map("is_deleted") /// 是否已删除（软删除标记）
+  deletedAt DateTime? @map("deleted_at") /// 删除时间
+  deletedBy String? @map("deleted_by") /// 删除人ID
 
   createdAt DateTime @default(now()) @map("created_at") /// 创建时间
   updatedAt DateTime @updatedAt @map("updated_at") /// 更新时间
@@ -230,6 +237,7 @@ model ReviewStepTemplate {
   // 关联关系
   reviewSteps ReviewStep[] /// 使用此模板的审核步骤实例（一对多）
   stepRoles   ReviewStepRole[] @relation("TemplateRoles") /// 该模板对应的审核角色列表（一对多）
+  taskReviewStages TaskReviewStage[] /// 任务审核步骤实例（一对多）
 
   @@map("review_step_templates")
 }
@@ -249,6 +257,7 @@ model ReviewConfig {
   // 关联关系
   steps          ReviewStep[]   @relation("ReviewConfigSteps") /// 该配置下的所有审核步骤（一对多）
   taskCategories TaskCategory[] /// 使用此配置的任务分类列表（一对多）
+  taskReviewConfigs TaskReviewConfig[] /// 使用此配置的任务审核实例（一对多）
 
   @@map("review_configs")
 }
@@ -298,3 +307,79 @@ model ReviewStepRole {
 
 
 // ==================== 审核任务模块 ====================
+// ==================== 任务审核实例模块 ====================
+
+/// 任务审核配置（任务创建时的审核配置实例）
+model TaskReviewConfig {
+  id String @id @default(cuid()) /// 任务审核配置唯一标识
+
+  taskId String @unique @map("task_id") /// 关联的任务ID（一对一关系）
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  reviewConfigId String       @map("review_config_id") /// 使用的审核配置ID
+  reviewConfig   ReviewConfig @relation(fields: [reviewConfigId], references: [id])
+
+  status TaskReviewStatus @default(PENDING) /// 整体审核状态
+  currentStepOrder Int @default(1) /// 当前审核步骤顺序
+
+  // 软删除字段
+  isDeleted Boolean @default(false) @map("is_deleted") /// 是否已删除
+  deletedAt DateTime? @map("deleted_at") /// 删除时间
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // 关联关系
+  reviewStages TaskReviewStage[] /// 任务的审核步骤实例列表
+
+  @@map("task_review_configs")
+}
+
+/// 任务审核步骤实例（具体任务的每个审核步骤）
+model TaskReviewStage {
+  id String @id @default(cuid()) /// 审核步骤实例唯一标识
+
+  taskReviewConfigId String            @map("task_review_config_id") /// 任务审核配置ID
+  taskReviewConfig   TaskReviewConfig @relation(fields: [taskReviewConfigId], references: [id], onDelete: Cascade)
+
+  stepConfigId String             @map("step_config_id") /// 步骤模板ID
+  stepConfig   ReviewStepTemplate @relation(fields: [stepConfigId], references: [id])
+
+  stepOrder Int /// 步骤顺序：1, 2, 3...
+  stepName  String @db.VarChar(100) /// 步骤名称（冗余存储，便于查询）
+
+  reviewerId String? @map("reviewer_id") /// 指定的审核人ID（可为空，表示还未分配）
+  reviewer   User?   @relation("TaskReviewer", fields: [reviewerId], references: [id])
+
+  status ReviewStageStatus @default(PENDING) /// 步骤状态
+  reviewComment String? @db.Text /// 审核意见
+  reviewedAt    DateTime? /// 审核完成时间
+
+  // 软删除字段
+  isDeleted Boolean @default(false) @map("is_deleted") /// 是否已删除
+  deletedAt DateTime? @map("deleted_at") /// 删除时间
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([taskReviewConfigId, stepOrder]) /// 同一任务配置下步骤顺序唯一
+  @@map("task_review_stages")
+}
+
+/// 任务审核整体状态枚举
+enum TaskReviewStatus {
+  PENDING /// 待审核
+  IN_PROGRESS /// 审核中
+  APPROVED /// 已通过
+  REJECTED /// 已拒绝
+  CANCELLED /// 已取消
+}
+
+/// 审核步骤状态枚举
+enum ReviewStageStatus {
+  PENDING /// 待审核
+  IN_PROGRESS /// 审核中
+  APPROVED /// 已通过
+  REJECTED /// 已拒绝
+  SKIPPED /// 已跳过
+}
