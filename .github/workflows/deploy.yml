@@ -1,0 +1,28 @@
+name: Deploy to Aliyun ECS
+
+on:
+  push:
+    branches:
+      - main # 推送到 main 分支时触发
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            cd /var/www/cost-manage-serve
+            git pull origin main
+            pnpm install
+            npx prisma generate
+            npx prisma migrate deploy
+            pnpm run build
+            pm2 restart cost-manage-serve
+            echo "✅ 部署完成!"
