@@ -1,85 +1,193 @@
 # 任务模块实现总结
 
-## ✅ 已完成的工作
+## 当前状态：已完成基础实现
 
-### 1. 数据库设计
+### 1. 数据库模型（Prisma Schema）✅
 
-- **Task 表**: 添加了 `projectId`（必填）、软删除字段（`isDeleted`, `deletedAt`, `deletedBy`）
-- **TaskReviewConfig 表**: 任务审核配置实例，支持软删除
-- **TaskReviewStage 表**: 任务审核步骤实例，记录每个步骤的审核人和状态
-- **TaskParticipant 表**: 任务参与人员关联表
+#### 核心表结构：
 
-### 2. DTO 设计
+- **Task（任务表）**：包含软删除字段（isDeleted, deletedAt, deletedBy）
+- **TaskParticipant（任务参与人）**：多对多关联表
+- **TaskReviewConfig（任务审核配置）**：一对一关联到Task，包含软删除字段
+- **TaskReviewStage（任务审核步骤实例）**：具体的审核步骤，包含软删除字段
 
-- **CreateTaskDto**: 创建任务，包含：
-  - 基本信息：`taskName`, `projectId`, `taskCategoryId`, `taskLeaderId`
-  - 审核配置：`isReviewRequired`, `reviewStageAssignments`（审核步骤分配）
-  - 参与人员：`participantIds`
-  - 其他：`description`, `attachments`
+#### 关键关系：
 
-- **ReviewStageAssignmentDto**: 审核步骤分配
-  - `stepConfigId`: 步骤模板ID
-  - `stepName`: 步骤名称
-  - `reviewerId`: 审核人ID
-  - 注意：步骤顺序由数组索引决定，无需 `stepOrder` 字段
+```
+Task (任务)
+  ├─ projectId → Project (必填，所有任务必须属于项目)
+  ├─ taskCategoryId → TaskCategory (任务分类)
+  ├─ taskLeaderId → User (任务负责人)
+  ├─ participants → TaskParticipant[] (参与人员)
+  └─ reviewConfig → TaskReviewConfig (审核配置，一对一)
+       └─ reviewStages → TaskReviewStage[] (审核步骤列表)
+            ├─ stepConfigId → ReviewStepTemplate (步骤模板)
+            └─ reviewerId → User (审核人)
+```
 
-- **UpdateTaskDto**: 更新任务（仅基本信息）
-- **TaskPaginationDto**: 分页查询，支持 `projectId` 筛选
+### 2. DTO 设计 ✅
 
-### 3. Controller 设计（遵循项目规范）
+#### CreateTaskDto（创建任务）
 
-路由前缀：`/task`
+```typescript
+{
+  taskName: string;              // 任务名称
+  projectId: string;             // 项目ID（必填）
+  isReviewRequired?: boolean;    // 是否需要审核
+  taskCategoryId: string;        // 任务分类ID
+  taskLeaderId: string;          // 任务负责人ID
+  participantIds?: string[];     // 参与人员ID列表
+  reviewStageAssignments?: [     // 审核步骤分配（数组顺序即步骤顺序）
+    {
+      stepConfigId: string;      // 步骤模板ID（从ReviewStepTemplate表）
+      stepName: string;          // 步骤名称
+      reviewerId: string;        // 审核人ID（具体用户ID）
+    }
+  ];
+  description?: string;          // 任务说明
+  attachments?: any;             // 附件列表
+}
+```
 
-| 方法   | 路由                                   | 说明                               |
-| ------ | -------------------------------------- | ---------------------------------- |
-| POST   | `/createTask`                          | 创建任务                           |
-| GET    | `/getTaskList`                         | 获取任务列表（支持分页）           |
-| GET    | `/detail/:id`                          | 获取任务详情                       |
-| POST   | `/updateTask/:id`                      | 更新任务                           |
-| DELETE | `/deleteTask/:id`                      | 删除任务（软删除）                 |
-| GET    | `/getProjectTaskList/:projectId`       | 获取项目任务列表（分页）           |
-| GET    | `/getProjectTaskSimpleList/:projectId` | 获取项目任务简单列表（下拉选择用） |
+#### UpdateTaskDto（更新任务）
 
-### 4. Service 实现
+```typescript
+{
+  id: string;                    // 任务ID
+  taskName?: string;             // 任务名称
+  description?: string;          // 任务说明
+  attachments?: any;             // 附件列表
+}
+```
 
-#### 核心方法：`addTask()`
+#### TaskPaginationDto（分页查询）
+
+```typescript
+{
+  pageNum?: string;              // 页码
+  pageSize?: string;             // 每页大小
+  keyword?: string;              // 搜索关键词
+  projectId?: string;            // 项目ID筛选
+}
+```
+
+### 3. Controller 接口 ✅
+
+遵循项目约定（参考 user.controller.ts, role-category.controller.ts）：
+
+```typescript
+@Controller('task')
+@ApiTags('task')
+
+// 基础CRUD
+POST   /task/createTask                    // 创建任务
+GET    /task/getTaskList                   // 获取任务列表（支持分页）
+GET    /task/detail/:id                    // 获取任务详情
+POST   /task/updateTask/:id                // 更新任务
+DELETE /task/deleteTask/:id                // 删除任务（软删除）
+
+// 项目相关
+GET    /task/getProjectTaskList/:projectId       // 获取项目任务列表（分页）
+GET    /task/getProjectTaskSimpleList/:projectId // 获取项目任务简单列表（下拉选择用）
+```
+
+### 4. Service 方法 ✅
+
+#### addTask（创建任务）- 核心方法
 
 使用事务处理，确保数据一致性：
 
-1. **创建任务基本信息**
-   - 明确指定每个字段（不使用展开运算符）
-   - 避免 DTO 字段与数据库字段不匹配
+```typescript
+async addTask(createdData: CreateTaskDto) {
+  // 1. 分离DTO字段
+  const { participantIds, reviewStageAssignments, ...restData } = createdData;
 
-2. **处理参与人员**
-   - 如果有 `participantIds`，批量创建 `TaskParticipant` 记录
+  return await this.Prisma.$transaction(async tx => {
+    // 2. 创建任务基本信息（明确指定每个字段）
+    const task = await tx.task.create({
+      data: {
+        taskName, projectId, taskCategoryId,
+        taskLeaderId, isReviewRequired,
+        description, attachments
+      }
+    });
 
-3. **处理审核流程**（当 `isReviewRequired=true` 时）
-   - 获取或创建 `ReviewConfig`
-   - 创建 `TaskReviewConfig` 实例
-   - 根据 `reviewStageAssignments` 创建 `TaskReviewStage` 记录
-   - 步骤顺序 = 数组索引 + 1
+    // 3. 创建参与人员记录
+    if (participantIds?.length > 0) {
+      await tx.taskParticipant.createMany({
+        data: participantIds.map(userId => ({ taskId: task.id, userId }))
+      });
+    }
 
-4. **返回完整任务信息**
-   - 包含所有关联数据（分类、负责人、项目、参与人员、审核步骤）
+    // 4. 如果需要审核，创建审核流程
+    if (isReviewRequired && reviewStageAssignments?.length > 0) {
+      // 4.1 获取或创建审核配置
+      let reviewConfigId = taskCategory.reviewConfig?.id ||
+                          (await createTempConfig()).id;
 
-#### 软删除方法
+      // 4.2 创建任务审核配置
+      const taskReviewConfig = await tx.taskReviewConfig.create({
+        data: { taskId, reviewConfigId, status: 'PENDING', currentStepOrder: 1 }
+      });
 
-- `removeTask()`: 软删除任务及相关审核配置
-- `restoreTask()`: 恢复已删除的任务
-- `permanentDeleteTask()`: 物理删除（谨慎使用）
+      // 4.3 创建审核步骤实例（数组索引 = 步骤顺序）
+      await tx.taskReviewStage.createMany({
+        data: reviewStageAssignments.map((assignment, index) => ({
+          taskReviewConfigId: taskReviewConfig.id,
+          stepConfigId: assignment.stepConfigId,
+          stepOrder: index + 1,  // 数组顺序决定步骤顺序
+          stepName: assignment.stepName,
+          reviewerId: assignment.reviewerId,
+          status: 'PENDING'
+        }))
+      });
+    }
 
-#### 查询方法
+    // 5. 返回完整任务信息（包含所有关联）
+    return await tx.task.findUnique({
+      where: { id: task.id },
+      include: { /* 所有关联 */ }
+    });
+  });
+}
+```
 
-- 所有查询默认过滤 `isDeleted=false`
-- 支持按项目筛选
-- 支持关键词搜索
+#### 其他方法
 
-## 🧪 待测试的功能
+- `updateTask()` - 更新任务
+- `findAllByPagination()` - 分页查询（支持项目筛选、关键词搜索）
+- `findTaskDetailById()` - 获取任务详情（包含所有关联）
+- `findSimpleTasksByProject()` - 获取项目简单任务列表
+- `removeTask()` - 软删除任务（同时软删除审核配置和步骤）
+- `restoreTask()` - 恢复已删除任务
+- `permanentDeleteTask()` - 物理删除任务（谨慎使用）
 
-### 1. 创建任务（不需要审核）
+### 5. 软删除机制 ✅
 
-```json
-POST /task/createTask
+#### 实现方式：
+
+- 添加字段：`isDeleted`, `deletedAt`, `deletedBy`
+- 查询时默认过滤：`where: { isDeleted: false }`
+- 删除时更新状态：`update({ isDeleted: true, deletedAt: new Date() })`
+- 级联软删除：删除任务时同时软删除关联的审核配置和步骤
+
+#### 优势：
+
+- 数据可恢复
+- 保留历史记录
+- 避免外键约束问题
+- 支持审计追踪
+
+## 下一步工作建议
+
+### 1. 测试创建任务接口
+
+```bash
+# 启动开发服务器
+npm run start:dev
+
+# 测试创建任务（不需要审核）
+POST http://localhost:3000/task/createTask
 {
   "taskName": "测试任务1",
   "projectId": "项目ID",
@@ -87,22 +195,18 @@ POST /task/createTask
   "taskLeaderId": "负责人ID",
   "isReviewRequired": false,
   "participantIds": ["用户ID1", "用户ID2"],
-  "description": "任务描述",
-  "attachments": null
+  "description": "这是一个测试任务"
 }
-```
 
-### 2. 创建任务（需要审核）
-
-```json
-POST /task/createTask
+# 测试创建任务（需要审核）
+POST http://localhost:3000/task/createTask
 {
   "taskName": "测试任务2",
   "projectId": "项目ID",
   "taskCategoryId": "分类ID",
   "taskLeaderId": "负责人ID",
   "isReviewRequired": true,
-  "participantIds": ["用户ID1", "用户ID2"],
+  "participantIds": ["用户ID1"],
   "reviewStageAssignments": [
     {
       "stepConfigId": "步骤模板ID1",
@@ -115,84 +219,84 @@ POST /task/createTask
       "reviewerId": "审核人ID2"
     }
   ],
-  "description": "需要审核的任务",
-  "attachments": null
+  "description": "需要审核的任务"
 }
 ```
 
-### 3. 查询任务列表
+### 2. 需要完善的功能
 
-```
-GET /task/getTaskList?pageNum=1&pageSize=10&keyword=测试&projectId=项目ID
-```
+#### 2.1 审核流程操作
 
-### 4. 查询任务详情
+- 提交审核
+- 审核通过/拒绝
+- 查看审核历史
+- 审核步骤跳转
 
-```
-GET /task/detail/:taskId
-```
+#### 2.2 任务状态管理
 
-### 5. 更新任务
+- 任务状态枚举（待开始、进行中、已完成等）
+- 状态流转逻辑
+- 状态变更记录
 
-```json
-POST /task/updateTask/:taskId
-{
-  "id": "任务ID",
-  "taskName": "更新后的任务名称",
-  "description": "更新后的描述"
-}
-```
+#### 2.3 权限控制
 
-### 6. 删除任务
+- 任务负责人权限
+- 参与人员权限
+- 审核人员权限
+- 项目管理员权限
 
-```
-DELETE /task/deleteTask/:taskId
-```
+#### 2.4 数据验证
 
-## ⚠️ 注意事项
+- 验证项目是否存在
+- 验证任务分类是否存在
+- 验证用户是否存在
+- 验证步骤模板是否存在
+- 验证审核配置是否有效
 
-1. **数据库同步**
-   - 已执行 `npx prisma db push` 同步数据库结构
-   - 如果有新的 schema 变更，需要重新执行
+#### 2.5 错误处理
 
-2. **关联数据准备**
-   - 测试前需要确保以下数据存在：
-     - 项目（Project）
-     - 任务分类（TaskCategory）
-     - 用户（User）
-     - 审核步骤模板（ReviewStepTemplate）
+- 添加自定义异常
+- 统一错误响应格式
+- 详细的错误信息
 
-3. **事务处理**
-   - 创建任务使用了事务，任何步骤失败都会回滚
-   - 确保数据一致性
+### 3. 性能优化建议
 
-4. **软删除**
-   - 删除操作默认是软删除
-   - 查询时自动过滤已删除记录
-   - 可以通过 `restoreTask()` 恢复
+- 添加数据库索引（已在schema中定义）
+- 使用缓存（Redis）缓存常用数据
+- 分页查询优化
+- 减少不必要的关联查询
 
-5. **审核流程**
-   - 步骤顺序由数组索引决定
-   - 如果任务分类没有关联审核配置，会自动创建临时配置
+### 4. 文档完善
 
-## 📝 下一步建议
+- API文档（Swagger）
+- 数据库设计文档
+- 业务流程图
+- 部署文档（已完成）
 
-1. **准备测试数据**
-   - 创建测试项目
-   - 创建测试用户
-   - 创建审核步骤模板
+## 技术栈
 
-2. **测试 API**
-   - 使用 Postman 或 Swagger 测试各个接口
-   - 验证事务是否正常工作
-   - 检查关联数据是否正确创建
+- **框架**: NestJS
+- **ORM**: Prisma
+- **数据库**: MySQL
+- **验证**: class-validator, class-transformer
+- **文档**: Swagger/OpenAPI
 
-3. **边界情况测试**
-   - 空数组（无参与人员、无审核步骤）
-   - 必填字段缺失
-   - 无效的 ID 引用
+## 项目约定
 
-4. **性能优化**（如果需要）
-   - 添加数据库索引
-   - 优化查询语句
-   - 考虑缓存策略
+1. **路由命名**：使用语义化命名（createTask, getTaskList），不使用RESTful风格
+2. **装饰器**：使用项目自定义装饰器（@ResponseMessage, @ListResponse）
+3. **数据分离**：DTO字段与数据库字段分离处理
+4. **事务处理**：多表操作使用 `$transaction` 确保一致性
+5. **软删除**：默认使用软删除，保留数据可恢复性
+6. **代码简洁**：保持代码简洁，移除不必要的功能
+
+## 注意事项
+
+⚠️ **重要提醒**：
+
+1. `reviewStageAssignments` 数组的顺序决定审核步骤的执行顺序
+2. `stepConfigId` 引用的是 `ReviewStepTemplate` 表（步骤模板）
+3. `reviewerId` 引用的是 `User` 表（具体的审核人）
+4. 所有任务必须属于一个项目（projectId 必填）
+5. 软删除的数据可以通过 `restoreTask()` 方法恢复
+6. 物理删除会触发级联删除（谨慎使用）
